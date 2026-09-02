@@ -1460,13 +1460,9 @@ Tensor clamp_backward(
     const Tensor& min,
     const Tensor& max) {
   if (max.defined() && min.defined()) {
-    const auto min_lt_max = min < max;
-    const auto tie =
-        ((self == min).logical_or(self == max)).logical_and(min_lt_max);
-    const auto inactive = (self < min).logical_or(self > max);
-    // The same strict losing-side mask handles ordered, equal, and reversed
-    // finite bounds.
-    return masked_fill_inplace_if_safe(where(tie, grad / 2, grad), inactive, 0);
+    // Dispatched so a backend can fuse the mask arithmetic into one pass; the
+    // composite kernel keeps the previous op sequence.
+    return at::_clamp_backward_tensor(grad, self, min, max);
   } else if (min.defined()) {
     return masked_fill_inplace_if_safe(
         where(self == min, grad / 2, grad), self < min, 0);
